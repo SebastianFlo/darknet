@@ -4,6 +4,7 @@
 #include "cuda.h"
 #include <stdio.h>
 #include <math.h>
+#include "server.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -238,73 +239,47 @@ image **load_alphabet()
 void draw_detections(image im, int num, float thresh, box *boxes, float **probs, float **masks, char **names, image **alphabet, int classes)
 {
     int i,j;
+    printf("%d : starting here \n", (int)time(NULL));
+    // setup_socket_server(6000);
 
-    for(i = 0; i < num; ++i){
-        char labelstr[4096] = {0};
-        int class = -1;
-        for(j = 0; j < classes; ++j){
+    // this is each frame
+    char predictions[4096];
+    char payload[4096];
+    predictions[0] = 0;
+    int count, last;
+    count = 0;
+    last = 0;
+    // let's get all the i's where theshold is check
+
+    for ( i = 0; i < num; i++ ) {
+        for ( j = 0; j < classes; j++ ) {
             if (probs[i][j] > thresh){
-                if (class < 0) {
-                    strcat(labelstr, names[j]);
-                    class = j;
+
+                // if not the first, add comma to the end
+                if (count != 0) {
+                    count += snprintf(predictions + count, sizeof(predictions), ", { \"name\": \"%s\", \"prob\": %f }", names[j], probs[i][j] );
                 } else {
-                    strcat(labelstr, ", ");
-                    strcat(labelstr, names[j]);
+                    count += snprintf(predictions + count, sizeof(predictions), "{ \"name\": \"%s\", \"prob\": %f }", names[j], probs[i][j] );
                 }
-                printf("%s: %.0f%%\n", names[j], probs[i][j]*100);
-            }
-        }
-        if(class >= 0){
-            int width = im.h * .006;
 
-            /*
-               if(0){
-               width = pow(prob, 1./2.)*10+1;
-               alphabet = 0;
-               }
-             */
-
-            //printf("%d %s: %.0f%%\n", i, names[class], prob*100);
-            int offset = class*123457 % classes;
-            float red = get_color(2,offset,classes);
-            float green = get_color(1,offset,classes);
-            float blue = get_color(0,offset,classes);
-            float rgb[3];
-
-            //width = prob*20+2;
-
-            rgb[0] = red;
-            rgb[1] = green;
-            rgb[2] = blue;
-            box b = boxes[i];
-
-            int left  = (b.x-b.w/2.)*im.w;
-            int right = (b.x+b.w/2.)*im.w;
-            int top   = (b.y-b.h/2.)*im.h;
-            int bot   = (b.y+b.h/2.)*im.h;
-
-            if(left < 0) left = 0;
-            if(right > im.w-1) right = im.w-1;
-            if(top < 0) top = 0;
-            if(bot > im.h-1) bot = im.h-1;
-
-            draw_box_width(im, left, top, right, bot, width, red, green, blue);
-            if (alphabet) {
-                image label = get_label(alphabet, labelstr, (im.h*.03)/10);
-                draw_label(im, top + width, left, label, rgb);
-                free_image(label);
-            }
-            if (masks){
-                image mask = float_to_image(14, 14, 1, masks[i]);
-                image resized_mask = resize_image(mask, b.w*im.w, b.h*im.h);
-                image tmask = threshold_image(resized_mask, .5);
-                embed_image(tmask, im, left, top);
-                free_image(mask);
-                free_image(resized_mask);
-                free_image(tmask);
             }
         }
     }
+
+    // if no detections, be empty
+    if (count == 0) {
+    // if (predictions[0] == 0) {
+        // printf("{ timestamp: %d, payload: [] }\n", (int)time(NULL));
+        snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [] }\n", (int)time(NULL));
+    } else {
+        // print all detections
+        // printf("{ timestamp: %d, payload: [ %s ]} \n", (int)time(NULL), predictions);
+        snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [ %s ]} \n", (int)time(NULL), predictions);
+    }
+
+    // pthread_join (threadid, status) 
+    // send_to_all(payload);
+    printf(payload);
 }
 
 void transpose_image(image im)
