@@ -269,11 +269,8 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
     // if no detections, be empty
     if (count == 0) {
     // if (predictions[0] == 0) {
-        // printf("{ timestamp: %d, payload: [] }\n", (int)time(NULL));
         snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [] }\n", (int)time(NULL));
     } else {
-        // print all detections
-        // printf("{ timestamp: %d, payload: [ %s ]} \n", (int)time(NULL), predictions);
         snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [ %s ]} \n", (int)time(NULL), predictions);
     }
 
