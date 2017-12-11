@@ -64,8 +64,45 @@ void *detect_in_thread(void *ptr)
     printf("\033[1;1H");
     printf("\nFPS:%.1f\n",fps);
     printf("Objects:\n\n");
-    image display = buff[(buff_index+2) % 3];
-    draw_detections(display, demo_detections, demo_thresh, boxes, probs, 0, demo_names, demo_alphabet, demo_classes);
+    // image display = buff[(buff_index+2) % 3];
+    // draw_detections(display, demo_detections, demo_thresh, boxes, probs, 0, demo_names, demo_alphabet, demo_classes);
+
+    int i,j;
+    printf("%d : starting here \n", (int)time(NULL));
+
+    // this is each frame
+    char predictions[4096];
+    char payload[4096];
+    predictions[0] = 0;
+    int count, last;
+    count = 0;
+    last = 0;
+
+    // let's get all the i's where threshold is checked
+    for ( i = 0; i < demo_detections; i++ ) {
+        for ( j = 0; j < demo_classes; j++ ) {
+            if (probs[i][j] > demo_thresh){
+
+                // if not the first, add comma to the end
+                if (count != 0) {
+                    count += snprintf(predictions + count, sizeof(predictions), ", { \"name\": \"%s\", \"prob\": %f }", demo_names[j], probs[i][j] );
+                } else {
+                    count += snprintf(predictions + count, sizeof(predictions), "{ \"name\": \"%s\", \"prob\": %f }", demo_names[j], probs[i][j] );
+                }
+
+            }
+        }
+    }
+
+    // if no detections, be empty
+    if (count == 0) {
+        snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [] }\n", (int)time(NULL));
+    } else {
+        snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [ %s ]} \n", (int)time(NULL), predictions);
+    }
+
+    send_to_all(payload);
+    puts(payload);
 
     demo_index = (demo_index + 1)%demo_frame;
     running = 0;
@@ -100,20 +137,6 @@ void *display_in_thread(void *ptr)
         if(demo_hier <= .0) demo_hier = .0;
     }
     return 0;
-}
-
-void *display_loop(void *ptr)
-{
-    while(1){
-        display_in_thread(0);
-    }
-}
-
-void *detect_loop(void *ptr)
-{
-    while(1){
-        detect_in_thread(0);
-    }
 }
 
 void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, char **names, int classes, int delay, char *prefix, int avg_frames, float hier, int w, int h, int frames, int fullscreen)
@@ -177,7 +200,6 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     int port = 6000;
 
     demo_time = what_time_is_it_now();
-    void *retVal = NULL;
 
     while(!demo_done){
         buff_index = (buff_index + 1) %3;
@@ -193,9 +215,10 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
             sprintf(name, "%s_%08d", prefix, count);
             save_image(buff[(buff_index + 1)%3], name);
         }
-        pthread_join(server_thread, &retVal);
+
         pthread_join(fetch_thread, 0);
         pthread_join(detect_thread, 0);
+        pthread_join(server_thread, 0);
         ++count;
     }
 }
