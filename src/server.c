@@ -17,7 +17,10 @@ int socket_count = 0;
 
 void *setup_socket_server() 
 {
-    int socket_desc, new_socket, c , *new_sock;
+    int socket_desc;
+    int new_socket;
+    int c;
+    int *new_sock;
     struct sockaddr_in server, client;
     char *message;
     int port = 6000;
@@ -48,7 +51,7 @@ void *setup_socket_server()
     while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) ) {
 
         pthread_t sniffer_thread;
-        new_sock = malloc(1);
+        new_sock = malloc(sizeof *new_sock);
         *new_sock = new_socket;
 
         if( pthread_create( &sniffer_thread, NULL, connection_handler, (void*) new_sock) < 0) {
@@ -61,7 +64,8 @@ void *setup_socket_server()
         printf("client connected - %d client(s)\n", socket_count);
 
         //Now join the thread , so that we dont terminate before the thread
-        pthread_join( sniffer_thread , NULL);
+        // pthread_join( sniffer_thread , NULL);
+        puts("Handler assigned");
     }
 
     if (new_socket<0) {
