@@ -10,16 +10,17 @@
 void *connection_handler(void *);
 void recieve_handler(int sock, char client_message[2000]);
 void send_to_all(char client_message[2000]);
+void *setup_socket_server();
 
 int sockets[10];
 int socket_count = 0;
 
-void *setup_socket_server(void *port) 
+void *setup_socket_server() 
 {
     int socket_desc, new_socket, c , *new_sock;
     struct sockaddr_in server, client;
     char *message;
-    port = 6000;
+    int port = 6000;
 
     // Create socket
     socket_desc = socket(AF_INET, SOCK_STREAM, 0);

@@ -131,7 +131,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     set_batch_network(net, 1);
     pthread_t detect_thread;
     pthread_t fetch_thread;
-    // pthread_t server_thread;
+    pthread_t server_thread;
 
     srand(2222222);
 
@@ -174,15 +174,16 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     ipl = cvCreateImage(cvSize(buff[0].w,buff[0].h), IPL_DEPTH_8U, buff[0].c);
 
     int count = 0;
-    // int port = 6000;
+    int port = 6000;
 
     demo_time = what_time_is_it_now();
+    void *retVal = NULL;
 
     while(!demo_done){
         buff_index = (buff_index + 1) %3;
         if(pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
         if(pthread_create(&detect_thread, 0, detect_in_thread, 0)) error("Thread creation failed");
-        // if(pthread_create(&server_thread, 0, setup_socket_server, 0)) error("Server Thread creation failed");
+        if(pthread_create(&server_thread, 0, setup_socket_server, 0)) error("Server Thread creation failed");
         if(!prefix){
             fps = 1./(what_time_is_it_now() - demo_time);
             demo_time = what_time_is_it_now();
@@ -192,9 +193,9 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
             sprintf(name, "%s_%08d", prefix, count);
             save_image(buff[(buff_index + 1)%3], name);
         }
+        pthread_join(server_thread, &retVal);
         pthread_join(fetch_thread, 0);
         pthread_join(detect_thread, 0);
-        // pthread_join(server_thread, 0);
         ++count;
     }
 }

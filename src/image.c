@@ -277,8 +277,7 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
         snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [ %s ]} \n", (int)time(NULL), predictions);
     }
 
-    // pthread_join (threadid, status) 
-    // send_to_all(payload);
+    send_to_all(payload);
     printf(payload);
 }
 
