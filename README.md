@@ -1,8 +1,43 @@
-![Darknet Logo](http://pjreddie.com/media/files/darknet-black-small.png)
+# Person Detection - alpha.0.0 #
+This project uses the Darknet neural network to objects and persons from a camera stream. The detected objects and the probability is then printed out. 
 
-#Darknet#
-Darknet is an open source neural network framework written in C and CUDA. It is fast, easy to install, and supports CPU and GPU computation.
+## Installation 
 
-For more information see the [Darknet project website](http://pjreddie.com/darknet).
+clone this repo
+```
+git clone https://github.com/SebastianFlo/darknet
+```
 
-For questions or issues please use the [Google Group](https://groups.google.com/forum/#!forum/darknet).
+build 
+```
+bash install.sh
+```
+
+## Running
+
+```
+./darknet detector demo -c 1 cfg/voc.data cfg/tiny-yolo-voc.cfg  tiny-yolo-voc.weights
+```
+
+
+Output should be: 
+
+```
+FPS:1.0
+Objects:
+
+1513079316 : starting here
+{ timestamp: 1513079316, payload: [ { "name": "person", "prob": 0.702280 } ]}
+```
+
+
+## Extra Options
+
+If a different camera needs to be used, run the followign command
+
+```
+./darknet detector demo -c 1 cfg/voc.data cfg/tiny-yolo-voc.cfg  tiny-yolo-voc.weights
+
+```
+
+Where the important flag `-c 1` points to the index of the camera. Default is `0`, second camera is `1`, etc..

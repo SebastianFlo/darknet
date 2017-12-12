@@ -8,7 +8,6 @@
 #include <math.h>
 #include "box.h"
 #include "darknet.h"
-#include "server.h"
 
 #ifndef __cplusplus
 #ifdef OPENCV

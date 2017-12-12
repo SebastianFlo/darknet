@@ -4,7 +4,6 @@
 #include "cuda.h"
 #include <stdio.h>
 #include <math.h>
-#include "server.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -240,7 +239,6 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
 {
     int i,j;
     printf("%d : starting here \n", (int)time(NULL));
-    // setup_socket_server(6000);
 
     // this is each frame
     char predictions[4096];
@@ -274,7 +272,6 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
         snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [ %s ]} \n", (int)time(NULL), predictions);
     }
 
-    send_to_all(payload);
     printf(payload);
 }
 

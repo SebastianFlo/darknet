@@ -6,7 +6,6 @@
 #include "parser.h"
 #include "box.h"
 #include "image.h"
-#include "server.h"
 #include "demo.h"
 #include <sys/time.h>
 
@@ -64,8 +63,6 @@ void *detect_in_thread(void *ptr)
     printf("\033[1;1H");
     printf("\nFPS:%.1f\n",fps);
     printf("Objects:\n\n");
-    // image display = buff[(buff_index+2) % 3];
-    // draw_detections(display, demo_detections, demo_thresh, boxes, probs, 0, demo_names, demo_alphabet, demo_classes);
 
     int i,j;
     printf("%d : starting here \n", (int)time(NULL));
@@ -101,7 +98,6 @@ void *detect_in_thread(void *ptr)
         snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [ %s ]} \n", (int)time(NULL), predictions);
     }
 
-    send_to_all(payload);
     puts(payload);
 
     demo_index = (demo_index + 1)%demo_frame;
@@ -154,7 +150,6 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     set_batch_network(net, 1);
     pthread_t detect_thread;
     pthread_t fetch_thread;
-    pthread_t server_thread;
 
     srand(2222222);
 
@@ -205,7 +200,6 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
         buff_index = (buff_index + 1) %3;
         if(pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
         if(pthread_create(&detect_thread, 0, detect_in_thread, 0)) error("Thread creation failed");
-        if(pthread_create(&server_thread, 0, setup_socket_server, 0)) error("Server Thread creation failed");
         if(!prefix){
             fps = 1./(what_time_is_it_now() - demo_time);
             demo_time = what_time_is_it_now();
@@ -218,7 +212,6 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
 
         pthread_join(fetch_thread, 0);
         pthread_join(detect_thread, 0);
-        pthread_join(server_thread, 0);
         ++count;
     }
 }
