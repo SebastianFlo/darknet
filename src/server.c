@@ -20,7 +20,6 @@ void *setup_socket_server()
     int socket_desc, new_socket, c , *new_sock;
     struct sockaddr_in server, client;
     int port = 6000;
-
     // Create socket
     socket_desc = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_desc == -1) {
@@ -47,13 +46,17 @@ void *setup_socket_server()
     c = sizeof(struct sockaddr_in);
     while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) ) {
 
-        pthread_t sniffer_thread;
+        // pthread_t sniffer_thread;
         new_sock = malloc(1);
         *new_sock = new_socket;
 
-        if( pthread_create( &sniffer_thread, NULL, connection_handler, (void*) new_sock) < 0) {
-            perror("could not create thread");
-            exit(1);
+        // if( pthread_create( &sniffer_thread, NULL, connection_handler, (void*) new_sock) < 0) {
+        //     perror("could not create thread");
+        //     exit(1);
+        // }
+
+        if (fork()) {
+            connection_handler(new_sock);
         }
 
         client_count++;
@@ -61,7 +64,7 @@ void *setup_socket_server()
         printf("client connected - %d client(s)\n", client_count);
         fflush(stdout);
         //Now join the thread , so that we dont terminate before the thread
-        pthread_join( sniffer_thread , NULL);
+        // pthread_join( sniffer_thread , NULL);
     }
 
     if (new_socket<0) {
