@@ -8,18 +8,17 @@
 #include<pthread.h> //for threading , link with lpthread
 
 void *connection_handler(void *);
-void recieve_handler(int sock, char client_message[2000]);
-void send_to_all(char client_message[2000]);
+void recieve_handler(int sock, char client_message[4096]);
+void send_to_all(char client_message[4096]);
 void *setup_socket_server();
 
 int sockets[10];
-int socket_count = 0;
+int client_count = 0;
 
-void *setup_socket_server() 
+void *setup_socket_server()
 {
     int socket_desc, new_socket, c , *new_sock;
     struct sockaddr_in server, client;
-    char *message;
     int port = 6000;
 
     // Create socket
@@ -44,6 +43,7 @@ void *setup_socket_server()
 
     //Accept and incoming connection
     printf("Waiting for incoming connections on port %i...\n", port);
+    fflush(stdout);
     c = sizeof(struct sockaddr_in);
     while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) ) {
 
@@ -56,10 +56,10 @@ void *setup_socket_server()
             exit(1);
         }
 
-        socket_count++;
+        client_count++;
 
-        printf("client connected - %d client(s)\n", socket_count);
-
+        printf("client connected - %d client(s)\n", client_count);
+        fflush(stdout);
         //Now join the thread , so that we dont terminate before the thread
         pthread_join( sniffer_thread , NULL);
     }
@@ -76,9 +76,11 @@ void *setup_socket_server()
  *
  * @param {char[2000]} message to send
  */
-void send_to_all(char client_message[2000]) {
+void send_to_all(char client_message[4096]) {
+    printf("sending to %d clients", client_count);
     int i;
-    for(i = 1; i <= socket_count; i++) {
+    for(i = 1; i <= client_count; i++) {
+        printf("socket %d", sockets[i]);
         write(sockets[i], client_message, strlen(client_message));
     }
 }
@@ -90,12 +92,12 @@ void *connection_handler(void *socket_desc) {
     // Get the socket descriptor
     int sock = *(int*)socket_desc;
     int read_size;
-    char *message , client_message[2000];
+    char client_message[4096];
 
     // assign new client to list
-    sockets[socket_count] = sock;
+    sockets[client_count] = sock;
 
-    while( (read_size = recv(sock , client_message , 2000 , 0)) > 0 ) {
+    while( (read_size = recv(sock , client_message , 4096 , 0)) > 0 ) {
         // Received message from client
         recieve_handler(sock, client_message);
     }
@@ -107,8 +109,8 @@ void *connection_handler(void *socket_desc) {
         perror("recv failed");
     }
 
-    socket_count--;
-    printf("client disconnected - %d client(s)\n", socket_count);
+    client_count--;
+    printf("client disconnected - %d client(s)\n", client_count);
 
     // Free the socket pointer
     free(socket_desc);
@@ -116,6 +118,6 @@ void *connection_handler(void *socket_desc) {
     return 0;
 }
 
-void recieve_handler(int sock, char client_message[2000]) {
+void recieve_handler(int sock, char client_message[4096]) {
     printf("message from client %i: %s\n", sock, client_message);
 }

@@ -60,10 +60,10 @@ void *detect_in_thread(void *ptr)
     }
     if (nms > 0) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
 
-    printf("\033[2J");
-    printf("\033[1;1H");
-    printf("\nFPS:%.1f\n",fps);
-    printf("Objects:\n\n");
+    // printf("\033[2J");
+    // printf("\033[1;1H");
+    // printf("\nFPS:%.1f\n",fps);
+    // printf("Objects:\n\n");
     image display = buff[(buff_index+2) % 3];
     draw_detections(display, demo_detections, demo_thresh, boxes, probs, 0, demo_names, demo_alphabet, demo_classes);
 
@@ -132,6 +132,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     pthread_t detect_thread;
     pthread_t fetch_thread;
     pthread_t server_thread;
+    pthread_t display_thread;
 
     srand(2222222);
 
@@ -179,25 +180,31 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     demo_time = what_time_is_it_now();
     void *retVal = NULL;
 
-    while(!demo_done){
-        buff_index = (buff_index + 1) %3;
-        if(pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
-        if(pthread_create(&detect_thread, 0, detect_in_thread, 0)) error("Thread creation failed");
-        if(pthread_create(&server_thread, 0, setup_socket_server, 0)) error("Server Thread creation failed");
-        if(!prefix){
-            fps = 1./(what_time_is_it_now() - demo_time);
-            demo_time = what_time_is_it_now();
-            display_in_thread(0);
-        }else{
-            char name[256];
-            sprintf(name, "%s_%08d", prefix, count);
-            save_image(buff[(buff_index + 1)%3], name);
+    if (fork()) {
+        while(!demo_done){
+            buff_index = (buff_index + 1) %3;
+            if(pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
+            if(pthread_create(&detect_thread, 0, detect_in_thread, 0)) error("Thread creation failed");
+            if(!prefix){
+                fps = 1./(what_time_is_it_now() - demo_time);
+                demo_time = what_time_is_it_now();
+                if(pthread_create(&display_thread, 0, display_in_thread, 0)) error("Thread creation failed");
+                pthread_join(display_thread, 0);
+            }else{
+                char name[256];
+                sprintf(name, "%s_%08d", prefix, count);
+                save_image(buff[(buff_index + 1)%3], name);
+            }
+            pthread_join(fetch_thread, 0);
+            pthread_join(detect_thread, 0);
+            ++count;
         }
-        pthread_join(server_thread, &retVal);
-        pthread_join(fetch_thread, 0);
-        pthread_join(detect_thread, 0);
-        ++count;
+    } else {
+        // if(pthread_create(&server_thread, 0, setup_socket_server, 0)) error("Server Thread creation failed");
+        // pthread_join(server_thread, &retVal);
+        setup_socket_server();
     }
+
 }
 
 #else
