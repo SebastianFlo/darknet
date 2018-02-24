@@ -7,7 +7,9 @@
 #include "box.h"
 #include "image.h"
 #include "demo.h"
+#include "socket_server.h"
 #include <sys/time.h>
+#include "parson.h"
 
 #define DEMO 1
 
@@ -38,6 +40,15 @@ static int demo_done = 0;
 static float *avg;
 double demo_time;
 
+const char* get_current_time_in_ISO8601 () {
+    static char current_time[sizeof "2011-10-08T07:07:0900Z"];
+    time_t now;
+    time(&now);
+    strftime(current_time, sizeof(current_time), "%FT%TZ", localtime(&now));
+
+    return current_time;
+}
+
 void *detect_in_thread(void *ptr)
 {
     running = 1;
@@ -59,13 +70,7 @@ void *detect_in_thread(void *ptr)
     }
     if (nms > 0) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
 
-    printf("\033[2J");
-    printf("\033[1;1H");
-    printf("\nFPS:%.1f\n",fps);
-    printf("Objects:\n\n");
-
     int i,j;
-    printf("%d : starting here \n", (int)time(NULL));
 
     // this is each frame
     char predictions[4096];
@@ -74,6 +79,49 @@ void *detect_in_thread(void *ptr)
     int count, last;
     count = 0;
     last = 0;
+
+    // JSON_Value *root_value = json_value_init_object();
+    // JSON_Object *root_object = json_value_get_object(root_value);
+    // JSON_Array *payload = NULL;
+    // static char *serialized_string = NULL;
+
+    // json_object_set_string(root_object, "objectType", "receivedPayload");
+    // json_object_set_string(root_object, "gwTimestamp", get_current_time_in_ISO8601());
+    // json_object_set_string(root_object, "payloadType", "acknowledged");
+
+    // json_object_set_value(root_object, "payload", json_value_init_array());
+
+    // payload = json_object_get_array(root_object, "payload");
+
+    // let's get all the i's where threshold is checked
+    // for ( i = 0; i < demo_detections; i++ ) {
+    //     for ( j = 0; j < demo_classes; j++ ) {
+    //         if (probs[i][j] > demo_thresh){
+    //             // JSON_Value *payload_value = json_value_init_object();
+    //             // JSON_Object *payload_object = json_value_get_object(payload_value);
+
+    //             // json_object_set_string(payload_object, "name", demo_names[j]);
+
+    //             // json_array_append_value(payload, payload_object);
+
+
+    //         //if not the first, add comma to the end
+    //         if (count != 0) {
+    //             count += snprintf(predictions + count, sizeof(predictions), ", { \"name\": \"%s\", \"prob\": %f }", demo_names[j], probs[i][j] );
+    //         } else {
+    //             count += snprintf(predictions + count, sizeof(predictions), "{ \"name\": \"%s\", \"prob\": %f }", demo_names[j], probs[i][j] );
+    //             }
+
+    //         }
+    //     }
+    // }
+
+    //serialized_string = json_serialize_to_string(root_value);
+    //printf("%s\n", serialized_string);
+    //send_to_all(serialized_string);
+
+    //json_free_serialized_string(serialized_string);
+    //json_value_free(root_value);
 
     // let's get all the i's where threshold is checked
     for ( i = 0; i < demo_detections; i++ ) {
@@ -99,6 +147,7 @@ void *detect_in_thread(void *ptr)
     }
 
     puts(payload);
+    send_to_all(payload);
 
     demo_index = (demo_index + 1)%demo_frame;
     running = 0;
@@ -195,6 +244,12 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     int port = 6000;
 
     demo_time = what_time_is_it_now();
+
+    pthread_t pth;
+    SocketServerConf* conf = malloc(sizeof(SocketServerConf));
+    conf->port = 6000;
+
+    pthread_create(&pth, NULL, setup_socket_server, conf);
 
     while(!demo_done){
         buff_index = (buff_index + 1) %3;
