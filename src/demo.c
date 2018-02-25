@@ -72,82 +72,49 @@ void *detect_in_thread(void *ptr)
 
     int i,j;
 
-    // this is each frame
-    char predictions[4096];
-    char payload[4096];
-    predictions[0] = 0;
-    int count, last;
-    count = 0;
-    last = 0;
+    JSON_Value *root_value = json_value_init_object();
+    JSON_Object *root_object = json_value_get_object(root_value);
+    JSON_Array *payload = NULL;
+    static char *serialized_string = NULL;
 
-    // JSON_Value *root_value = json_value_init_object();
-    // JSON_Object *root_object = json_value_get_object(root_value);
-    // JSON_Array *payload = NULL;
-    // static char *serialized_string = NULL;
+    json_object_set_string(root_object, "type", "payload");
+    json_object_set_string(root_object, "timestamp", get_current_time_in_ISO8601());
 
-    // json_object_set_string(root_object, "objectType", "receivedPayload");
-    // json_object_set_string(root_object, "gwTimestamp", get_current_time_in_ISO8601());
-    // json_object_set_string(root_object, "payloadType", "acknowledged");
+    json_object_dotset_number(root_object, "dimensions.width", buff[0].w);
+    json_object_dotset_number(root_object, "dimensions.height", buff[0].h);
 
-    // json_object_set_value(root_object, "payload", json_value_init_array());
+    json_object_set_value(root_object, "payload", json_value_init_array());
 
-    // payload = json_object_get_array(root_object, "payload");
-
-    // let's get all the i's where threshold is checked
-    // for ( i = 0; i < demo_detections; i++ ) {
-    //     for ( j = 0; j < demo_classes; j++ ) {
-    //         if (probs[i][j] > demo_thresh){
-    //             // JSON_Value *payload_value = json_value_init_object();
-    //             // JSON_Object *payload_object = json_value_get_object(payload_value);
-
-    //             // json_object_set_string(payload_object, "name", demo_names[j]);
-
-    //             // json_array_append_value(payload, payload_object);
-
-
-    //         //if not the first, add comma to the end
-    //         if (count != 0) {
-    //             count += snprintf(predictions + count, sizeof(predictions), ", { \"name\": \"%s\", \"prob\": %f }", demo_names[j], probs[i][j] );
-    //         } else {
-    //             count += snprintf(predictions + count, sizeof(predictions), "{ \"name\": \"%s\", \"prob\": %f }", demo_names[j], probs[i][j] );
-    //             }
-
-    //         }
-    //     }
-    // }
-
-    //serialized_string = json_serialize_to_string(root_value);
-    //printf("%s\n", serialized_string);
-    //send_to_all(serialized_string);
-
-    //json_free_serialized_string(serialized_string);
-    //json_value_free(root_value);
+    payload = json_object_get_array(root_object, "payload");
 
     // let's get all the i's where threshold is checked
     for ( i = 0; i < demo_detections; i++ ) {
         for ( j = 0; j < demo_classes; j++ ) {
             if (probs[i][j] > demo_thresh){
+                box b = boxes[i];
 
-                // if not the first, add comma to the end
-                if (count != 0) {
-                    count += snprintf(predictions + count, sizeof(predictions), ", { \"name\": \"%s\", \"prob\": %f }", demo_names[j], probs[i][j] );
-                } else {
-                    count += snprintf(predictions + count, sizeof(predictions), "{ \"name\": \"%s\", \"prob\": %f }", demo_names[j], probs[i][j] );
-                }
+                JSON_Value *payload_value = json_value_init_object();
+                JSON_Object *payload_object = json_value_get_object(payload_value);
 
+                json_object_set_string(payload_object, "name", demo_names[j]);
+                json_object_set_number(payload_object, "probability", probs[i][j]);
+
+                json_object_set_number(payload_object, "width", b.w);
+                json_object_set_number(payload_object, "height", b.h);
+                json_object_set_number(payload_object, "x", b.x);
+                json_object_set_number(payload_object, "y", b.y);
+
+                json_array_append_value(payload, payload_value);
             }
         }
     }
 
-    // if no detections, be empty
-    if (count == 0) {
-        snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [] }\n", (int)time(NULL));
-    } else {
-        snprintf(payload, sizeof(predictions), "{ timestamp: %d, payload: [ %s ]} \n", (int)time(NULL), predictions);
-    }
+    serialized_string = json_serialize_to_string(root_value);
+    printf("%s\n", serialized_string);
+    send_to_all(serialized_string);
 
-    puts(payload);
-    send_to_all(payload);
+    json_free_serialized_string(serialized_string);
+    json_value_free(root_value);
 
     demo_index = (demo_index + 1)%demo_frame;
     running = 0;
